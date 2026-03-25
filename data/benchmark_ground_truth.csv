@@ -1,0 +1,6 @@
+case_id,module,expected_label,predicted_label,accuracy
+C001,compliance,低风险,低风险,100
+C002,compliance,中风险,中风险,100
+C003,geology,二级观察（需补数据）,二级观察（需补数据）,100
+C004,geology,三级盲矿（建议放弃）,三级盲矿（建议放弃）,100
+C005,trade,通过,通过,100

@@ -1,0 +1,4 @@
+timestamp,module,case_id,duration_seconds,is_success,accuracy,manual_minutes,app_minutes
+2026-03-25 09:30:00,compliance,C001,15,True,100,120,22
+2026-03-25 09:33:00,geology,C003,38,True,98,110,20
+2026-03-25 09:36:00,trade,C005,6,True,100,45,8
