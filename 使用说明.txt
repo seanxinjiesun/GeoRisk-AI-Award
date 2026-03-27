@@ -1,0 +1,33 @@
+【GeoRisk-AI-Award 使用说明】
+
+一、环境要求
+
+* Python 3.10+
+* Windows系统
+
+二、安装依赖
+打开CMD进入项目目录：
+
+pip install -r requirements.txt
+
+三、启动系统
+python -m streamlit run app.py
+
+四、访问地址
+浏览器打开：
+http://localhost:8501
+
+五、功能说明
+
+1. 矿山分析模块：支持PDF/Doc/TXT文件AI分析
+2. 贸易测算模块：利润测算 + 报价决策
+3. 订单记录系统：自动记录交易
+4. Excel导出：支持历史数据导出
+
+六、注意事项
+
+* 需配置 API_KEY
+* 若无法获取汇率，系统自动使用默认值
+
+七、作者
+孙鑫洁

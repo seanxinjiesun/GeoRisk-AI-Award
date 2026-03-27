@@ -16,9 +16,14 @@ BENCHMARK_PATH = DATA_DIR / "benchmark_ground_truth.csv"
 BASELINE_PATH = DATA_DIR / "manual_baseline_times.csv"
 
 
-st.set_page_config(page_title="Geo-Risk 指标看板", layout="wide")
-st.title("AI应用奖证据看板")
-st.markdown("用于展示准确率、效率提升、稳定性与复用性指标。")
+st.set_page_config(page_title="系统运行分析看板", layout="wide")
+
+with st.sidebar:
+    st.page_link("app.py", label="app")
+    st.page_link("pages/4_指标看板.py", label="指标看板")
+
+st.title("系统运行分析看板")
+st.markdown("用于展示系统运行质量、决策效率与模型稳定性指标。")
 
 kpis = compute_kpis(str(METRICS_PATH))
 

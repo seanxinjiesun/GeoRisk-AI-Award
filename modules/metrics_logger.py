@@ -18,6 +18,32 @@ METRICS_COLUMNS = [
     "app_minutes",
 ]
 
+MINING_HISTORY_COLUMNS = [
+    "timestamp",
+    "case_id",
+    "project_name",
+    "company_name",
+    "mode",
+    "risk_level",
+    "advice",
+    "summary",
+]
+
+TRADE_HISTORY_COLUMNS = [
+    "timestamp",
+    "case_id",
+    "caf2",
+    "sio2",
+    "price",
+    "cost",
+    "quantity",
+    "profit_usd",
+    "profit_rmb",
+    "risk_level",
+    "success_rate",
+    "recommended_strategy",
+]
+
 
 def init_metrics_file(path: str) -> None:
     p = Path(path)
@@ -77,3 +103,45 @@ def compute_kpis(metrics_path: str) -> Dict[str, float]:
         "avg_accuracy": round(avg_accuracy, 2),
         "efficiency_gain_pct": round(float(efficiency_gain), 2),
     }
+
+
+def _append_row(path: str, row: Dict, columns: list[str]) -> None:
+    p = Path(path)
+    if not p.exists():
+        pd.DataFrame(columns=columns).to_csv(p, index=False, encoding="utf-8-sig")
+
+    df = pd.read_csv(p)
+    complete_row = {col: row.get(col, "") for col in columns}
+    if not complete_row.get("timestamp"):
+        complete_row["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    df = pd.concat([df, pd.DataFrame([complete_row])], ignore_index=True)
+    df.to_csv(p, index=False, encoding="utf-8-sig")
+
+
+def _read_rows(path: str, columns: list[str]) -> pd.DataFrame:
+    p = Path(path)
+    if not p.exists():
+        return pd.DataFrame(columns=columns)
+
+    df = pd.read_csv(p)
+    for col in columns:
+        if col not in df.columns:
+            df[col] = ""
+    return df[columns]
+
+
+def log_mining_history(path: str, row: Dict) -> None:
+    _append_row(path, row, MINING_HISTORY_COLUMNS)
+
+
+def read_mining_history(path: str) -> pd.DataFrame:
+    return _read_rows(path, MINING_HISTORY_COLUMNS)
+
+
+def log_trade_history(path: str, row: Dict) -> None:
+    _append_row(path, row, TRADE_HISTORY_COLUMNS)
+
+
+def read_trade_history(path: str) -> pd.DataFrame:
+    return _read_rows(path, TRADE_HISTORY_COLUMNS)
