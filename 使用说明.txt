@@ -1,33 +1,76 @@
 【GeoRisk-AI-Award 使用说明】
 
-一、环境要求
+一、项目目标
+
+本系统可部署为公网可访问网页（Streamlit Cloud），适合微信分享。
+支持：
+- 在线AI模式（调用 Claude API）
+- 演示模式（不依赖外部API，100%可运行）
+
+二、环境要求
 
 * Python 3.10+
-* Windows系统
+* 可联网（在线AI模式需要）
 
-二、安装依赖
-打开CMD进入项目目录：
+三、安装依赖
+
+进入项目目录后执行：
 
 pip install -r requirements.txt
 
-三、启动系统
+四、本地配置与启动
+
+1）推荐使用 Streamlit secrets（优先）
+在项目目录创建：`.streamlit/secrets.toml`
+
+内容示例：
+ANTHROPIC_API_KEY = "your_api_key"
+BASE_URL = "https://your-base-url"  # 可选
+
+2）启动系统
 python -m streamlit run app.py
 
-四、访问地址
-浏览器打开：
+3）访问地址
 http://localhost:8501
 
-五、功能说明
+五、模式说明（页面顶部可见）
 
-1. 矿山分析模块：支持PDF/Doc/TXT文件AI分析
-2. 贸易测算模块：利润测算 + 报价决策
-3. 订单记录系统：自动记录交易
-4. Excel导出：支持历史数据导出
+* 在线AI模式：使用真实API进行文件分析
+* 演示模式：使用本地模拟数据（用于展示/比赛）
 
-六、注意事项
+自动切换到演示模式的情况：
+* 关闭“是否启用AI”
+* API配置缺失
+* API调用失败
 
-* 需配置 API_KEY
-* 若无法获取汇率，系统自动使用默认值
+系统会提示：当前为演示数据
 
-七、作者
-孙鑫洁
+六、核心功能
+
+1. 矿山文件分析（模块1）
+   - 支持 PDF / DOCX / TXT / JPG / PNG
+   - 可在模块内查询矿山记录并导出Excel
+
+2. 贸易测算决策（模块2）
+   - 报价、利润、风险与图表
+   - 可在模块内查询贸易记录并导出Excel
+
+3. 指标看板
+   - 展示运行次数、成功率、准确率、效率提升等
+
+七、Streamlit Cloud 部署步骤（公网分享）
+
+1）将项目推送到 GitHub
+2）登录 Streamlit Cloud，新建应用（New app）
+3）选择仓库与分支，入口文件填：app.py
+4）在应用 Secrets 中配置：
+   ANTHROPIC_API_KEY = "your_api_key"
+   BASE_URL = "https://your-base-url"  # 可选
+5）点击 Deploy，获得公网链接
+6）将链接分享给他人（可微信直接打开）
+
+八、注意事项
+
+* 前端不会暴露 API_KEY 与 BASE_URL
+* 在线模式异常时会自动回退演示模式
+* 汇率接口异常时系统会自动使用回退值

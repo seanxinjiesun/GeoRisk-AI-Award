@@ -58,6 +58,9 @@ class FileAIResult:
     radar_scores: Dict[str, float]
     highlight_keywords: List[str]
     raw_response: str
+    runtime_mode: str  # online | demo
+    is_demo_data: bool
+    demo_notice: str
 
 
 def _read_txt(path: Path) -> str:
@@ -228,45 +231,119 @@ def _safe_scores(payload: dict) -> Dict[str, float]:
     }
 
 
-def analyze_file_with_ai(report_text: str, company_name: str = "", project_name: str = "") -> FileAIResult:
+def _mining_payload_fallback() -> dict:
+    return {
+        "summary": "文档疑似矿业相关，但结构化结果异常，建议补充数据重试。",
+        "mineral_type": "未稳定识别",
+        "grade_info": "未稳定识别",
+        "deposit_type": "未稳定识别",
+        "orebody_scale": "资料不足",
+        "thickness_extension": "资料不足",
+        "mineability": "谨慎评估",
+        "geological_info": "地质要素可部分识别，但证据链不足。",
+        "orebody_analysis": "矿体规模与稳定性信息不足。",
+        "data_integrity": "关键字段缺失，建议补充钻孔与化验数据。",
+        "risk_identification": "地质/开采/合规风险信息不完整。",
+        "investment_advice": "谨慎",
+        "result_interpretation": "仅供初筛参考，暂不建议直接投资决策。",
+        "logic_basis": "AI输出异常回退保守策略。",
+        "risk_hint": "优先补齐矿体连续性与品位样本数据。",
+        "risk_level": "中风险",
+        "highlight_keywords": ["矿体", "品位", "风险"],
+        "radar_scores": {
+            "geological_potential": 55,
+            "data_integrity": 50,
+            "project_stage": 50,
+            "risk_factor": 50,
+        },
+    }
+
+
+def _mining_payload_demo() -> dict:
+    return {
+        "summary": "当前为演示模式，系统基于样例矿业数据生成结构化尽调结论。",
+        "mineral_type": "萤石矿（演示）",
+        "grade_info": "CaF2约82%，SiO2约4.5%（演示样例）",
+        "deposit_type": "热液型（演示）",
+        "orebody_scale": "中型矿体（演示）",
+        "thickness_extension": "厚度与延伸连续性中等（演示）",
+        "mineability": "具备开发潜力，建议补充钻孔验证。",
+        "geological_info": "地层与构造条件具备一定成矿指示，但证据链仍需补强。",
+        "orebody_analysis": "矿体连续性尚可，局部变化较大，建议分区评估。",
+        "data_integrity": "当前仅用于演示，正式决策需补齐化验与工程验证数据。",
+        "risk_identification": "政策合规、品位波动与开采成本是主要风险项。",
+        "investment_advice": "谨慎",
+        "result_interpretation": "演示输出显示项目可作为初筛对象，不可直接替代正式尽调结论。",
+        "logic_basis": "演示样例基于规则与历史结构化模板生成。",
+        "risk_hint": "当前为演示数据，正式使用前请开启在线AI并补充原始地质证据。",
+        "risk_level": "中风险",
+        "highlight_keywords": ["演示", "CaF2", "风险"],
+        "radar_scores": {
+            "geological_potential": 68,
+            "data_integrity": 52,
+            "project_stage": 58,
+            "risk_factor": 57,
+        },
+    }
+
+
+def _general_payload_fallback() -> dict:
+    return {
+        "summary": "文档为通用内容，已输出摘要与建议。",
+        "key_insights": ["可提取核心信息", "可用于初步决策支持"],
+        "bullet_points": ["建议人工复核关键结论"],
+        "risk_issues": "未发现高等级风险。",
+        "application_advice": "建议结合业务场景继续使用。",
+        "result_interpretation": "适合用于初筛。",
+        "logic_basis": "基于文本语义与关键句提取。",
+        "risk_hint": "高影响决策前建议二次复核。",
+        "risk_level": "低风险",
+        "highlight_keywords": ["摘要", "要点", "建议"],
+    }
+
+
+def _general_payload_demo() -> dict:
+    return {
+        "summary": "当前为演示模式，系统基于样例文档生成摘要和结构化要点。",
+        "key_insights": ["演示数据用于流程展示", "关键字段可稳定输出", "支持后续人工复核"],
+        "bullet_points": ["当前为演示数据", "正式评审请启用在线AI", "高影响结论建议二次校验"],
+        "risk_issues": "演示模式下不判定真实业务风险等级，仅供展示流程。",
+        "application_advice": "可用于路演与评委演示，正式业务请切换在线AI模式。",
+        "result_interpretation": "系统功能完整可运行，结果为演示样例。",
+        "logic_basis": "演示模式采用本地模板输出，避免外部API依赖。",
+        "risk_hint": "当前为演示数据。",
+        "risk_level": "低风险",
+        "highlight_keywords": ["演示", "摘要", "结构化"],
+    }
+
+
+def analyze_file_with_ai(report_text: str, company_name: str = "", project_name: str = "", ai_enabled: bool = True) -> FileAIResult:
     if not report_text.strip():
         raise ValueError("文本为空，无法分析")
 
     mode = "mining" if _is_mining_related(report_text) else "general"
-    raw = call_claude(_build_prompt(mode, company_name, project_name, report_text))
+    runtime_mode = "online"
+    raw = ""
+    payload: dict = {}
 
-    try:
-        payload = _extract_json(raw)
-    except Exception:
-        payload = {}
+    if ai_enabled:
+        try:
+            raw = call_claude(_build_prompt(mode, company_name, project_name, report_text))
+            try:
+                payload = _extract_json(raw)
+            except Exception:
+                payload = {}
+        except Exception:
+            runtime_mode = "demo"
+            payload = {}
+    else:
+        runtime_mode = "demo"
 
     if mode == "mining":
-        if not payload:
-            payload = {
-                "summary": "文档疑似矿业相关，但结构化结果异常，建议补充数据重试。",
-                "mineral_type": "未稳定识别",
-                "grade_info": "未稳定识别",
-                "deposit_type": "未稳定识别",
-                "orebody_scale": "资料不足",
-                "thickness_extension": "资料不足",
-                "mineability": "谨慎评估",
-                "geological_info": "地质要素可部分识别，但证据链不足。",
-                "orebody_analysis": "矿体规模与稳定性信息不足。",
-                "data_integrity": "关键字段缺失，建议补充钻孔与化验数据。",
-                "risk_identification": "地质/开采/合规风险信息不完整。",
-                "investment_advice": "谨慎",
-                "result_interpretation": "仅供初筛参考，暂不建议直接投资决策。",
-                "logic_basis": "AI输出异常回退保守策略。",
-                "risk_hint": "优先补齐矿体连续性与品位样本数据。",
-                "risk_level": "中风险",
-                "highlight_keywords": ["矿体", "品位", "风险"],
-                "radar_scores": {
-                    "geological_potential": 55,
-                    "data_integrity": 50,
-                    "project_stage": 50,
-                    "risk_factor": 50,
-                },
-            }
+        if runtime_mode == "demo":
+            payload = _mining_payload_demo()
+        elif not payload:
+            payload = _mining_payload_fallback()
 
         advice_raw = str(payload.get("investment_advice", "谨慎"))
         if "继续" in advice_raw or "建议投资" in advice_raw:
@@ -301,21 +378,15 @@ def analyze_file_with_ai(report_text: str, company_name: str = "", project_name:
             radar_scores=_safe_scores(payload),
             highlight_keywords=_to_list(payload.get("highlight_keywords")),
             raw_response=raw,
+            runtime_mode=runtime_mode,
+            is_demo_data=runtime_mode == "demo",
+            demo_notice="当前为演示数据" if runtime_mode == "demo" else "",
         )
 
-    if not payload:
-        payload = {
-            "summary": "文档为通用内容，已输出摘要与建议。",
-            "key_insights": ["可提取核心信息", "可用于初步决策支持"],
-            "bullet_points": ["建议人工复核关键结论"],
-            "risk_issues": "未发现高等级风险。",
-            "application_advice": "建议结合业务场景继续使用。",
-            "result_interpretation": "适合用于初筛。",
-            "logic_basis": "基于文本语义与关键句提取。",
-            "risk_hint": "高影响决策前建议二次复核。",
-            "risk_level": "低风险",
-            "highlight_keywords": ["摘要", "要点", "建议"],
-        }
+    if runtime_mode == "demo":
+        payload = _general_payload_demo()
+    elif not payload:
+        payload = _general_payload_fallback()
 
     return FileAIResult(
         mode="general",
@@ -342,4 +413,7 @@ def analyze_file_with_ai(report_text: str, company_name: str = "", project_name:
         radar_scores={"geological_potential": 0, "data_integrity": 0, "project_stage": 0, "risk_factor": 0},
         highlight_keywords=_to_list(payload.get("highlight_keywords")),
         raw_response=raw,
+        runtime_mode=runtime_mode,
+        is_demo_data=runtime_mode == "demo",
+        demo_notice="当前为演示数据" if runtime_mode == "demo" else "",
     )
