@@ -261,14 +261,18 @@ with module2:
     with c2:
         sio2 = st.number_input("SiO2（杂质 %）", min_value=0.0, max_value=100.0, value=4.5)
     with c3:
-        buyer_price = st.number_input("买方基准价（USD/吨）", min_value=0.0, value=120.0)
+        buy_price = st.number_input("买入价（USD/吨）", min_value=0.0, value=80.0)
 
     c4, c5, c6 = st.columns(3)
     with c4:
-        logistics_cost = st.number_input("物流成本（USD/吨）", min_value=0.0, value=35.0)
+        sell_price = st.number_input("卖出价（USD/吨）", min_value=0.0, value=120.0)
     with c5:
-        volume = st.number_input("成交吨数（吨）", min_value=0.0, value=500.0)
+        logistics_cost = st.number_input("物流成本（USD/吨）", min_value=0.0, value=35.0)
     with c6:
+        volume = st.number_input("成交吨数（吨）", min_value=0.0, value=500.0)
+
+    c7 = st.columns(1)[0]
+    with c7:
         custom_fx = st.number_input("汇率（USD→CNY，可改）", min_value=0.0, value=float(FX.usd_cny))
 
     if st.button("运行贸易测算", type="primary", key="run_trade"):
@@ -277,7 +281,8 @@ with module2:
             caf2_grade=caf2,
             sio2_grade=sio2,
             logistics_cost=logistics_cost,
-            target_price=buyer_price,
+            buy_price=buy_price,
+            sell_price=sell_price,
             exchange_rate=custom_fx,
             volume_ton=volume,
         )
@@ -292,7 +297,7 @@ with module2:
             m1, m2, m3, m4, m5 = st.columns(5)
             m1.metric("单吨利润(USD)", f"{calc.profit_per_ton:.2f}")
             m2.metric("总利润(USD)", f"{calc.total_profit:.2f}")
-            m3.metric("建议报价区间", f"{calc.suggested_quote_low:.2f}~{calc.suggested_quote_high:.2f}")
+            m3.metric("建议买入区间", f"{calc.suggested_quote_low:.2f}~{calc.suggested_quote_high:.2f}")
             m4.metric("盈亏平衡点", f"{calc.break_even_quote:.2f}")
             m5.metric("成交概率", f"{calc.deal_probability * 100:.0f}%")
 
@@ -367,7 +372,7 @@ with module2:
                 "case_id": case_id_trade,
                 "caf2": round(caf2, 2),
                 "sio2": round(sio2, 2),
-                "price": round(buyer_price, 2),
+                "price": round(buy_price, 2),
                 "cost": round(logistics_cost, 2),
                 "quantity": round(volume, 2),
                 "profit_usd": round(calc.total_profit, 2),
