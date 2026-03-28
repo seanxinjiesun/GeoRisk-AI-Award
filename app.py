@@ -10,7 +10,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from modules.claude_client import is_ai_configured
 from modules.fx_service import get_usd_cny_rate
 from modules.geology_service import analyze_file_with_ai, extract_text
 from modules.metrics_logger import (
@@ -42,18 +41,7 @@ with st.sidebar:
     st.header("运行控制台")
     st.page_link("app.py", label="app")
     st.page_link("pages/4_指标看板.py", label="指标看板")
-    ai_enabled = st.toggle("是否启用AI", value=True)
 
-
-configured = is_ai_configured()
-runtime_mode = "在线AI模式" if (ai_enabled and configured) else "演示模式"
-mode_color = "#16A34A" if runtime_mode == "在线AI模式" else "#F59E0B"
-st.markdown(
-    f"<div style='padding:10px 12px;border-radius:10px;background:{mode_color};color:white;font-weight:700;display:inline-block;margin-bottom:8px;'>当前模式：{runtime_mode}</div>",
-    unsafe_allow_html=True,
-)
-if ai_enabled and not configured:
-    st.warning("未检测到有效AI配置，已自动使用演示模式。")
 
 FX = get_usd_cny_rate()
 
@@ -155,16 +143,9 @@ with module1:
 
             try:
                 text = extract_text(path)
-                result = analyze_file_with_ai(
-                    text,
-                    company_name=company_name,
-                    project_name=project_name,
-                    ai_enabled=ai_enabled and configured,
-                )
+                result = analyze_file_with_ai(text, company_name=company_name, project_name=project_name)
 
                 st.success("AI分析完成")
-                if result.is_demo_data:
-                    st.warning(result.demo_notice or "当前为演示数据")
                 st.info(f"自动判定分析模式：{'矿业模式' if result.mode == 'mining' else '通用模式'}")
                 render_risk_badge(result.risk_level)
                 st.markdown("<br>", unsafe_allow_html=True)
@@ -235,8 +216,8 @@ with module1:
                     },
                 )
 
-            except Exception:
-                st.error("处理失败：已自动切换演示模式，请稍后重试或检查配置。")
+            except Exception as exc:
+                st.error(f"处理失败：{exc}")
                 log_metric(
                     METRICS_PATH,
                     {

@@ -55,9 +55,9 @@ def call_claude(prompt: str, model: str = "claude-sonnet-4-6", temperature: floa
             messages=[{"role": "user", "content": prompt}],
         )
     except Exception as exc:
-        raise RuntimeError("Claude API 调用失败，已切换到演示模式。") from exc
+        raise RuntimeError("Claude API 调用失败，请检查网络、密钥或 BASE_URL 配置。") from exc
 
     text = _extract_text_blocks(response.content)
     if not text:
-        raise RuntimeError("Claude API 返回为空，已切换到演示模式。")
+        raise RuntimeError("Claude API 返回为空，请重试或检查模型配置。")
     return text
