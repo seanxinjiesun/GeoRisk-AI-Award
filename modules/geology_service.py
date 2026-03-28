@@ -228,49 +228,6 @@ def _safe_scores(payload: dict) -> Dict[str, float]:
     }
 
 
-def _mining_payload_fallback() -> dict:
-    return {
-        "summary": "文档疑似矿业相关，但结构化结果异常，建议补充数据重试。",
-        "mineral_type": "未稳定识别",
-        "grade_info": "未稳定识别",
-        "deposit_type": "未稳定识别",
-        "orebody_scale": "资料不足",
-        "thickness_extension": "资料不足",
-        "mineability": "谨慎评估",
-        "geological_info": "地质要素可部分识别，但证据链不足。",
-        "orebody_analysis": "矿体规模与稳定性信息不足。",
-        "data_integrity": "关键字段缺失，建议补充钻孔与化验数据。",
-        "risk_identification": "地质/开采/合规风险信息不完整。",
-        "investment_advice": "谨慎",
-        "result_interpretation": "仅供初筛参考，暂不建议直接投资决策。",
-        "logic_basis": "AI输出异常回退保守策略。",
-        "risk_hint": "优先补齐矿体连续性与品位样本数据。",
-        "risk_level": "中风险",
-        "highlight_keywords": ["矿体", "品位", "风险"],
-        "radar_scores": {
-            "geological_potential": 55,
-            "data_integrity": 50,
-            "project_stage": 50,
-            "risk_factor": 50,
-        },
-    }
-
-
-def _general_payload_fallback() -> dict:
-    return {
-        "summary": "文档为通用内容，已输出摘要与建议。",
-        "key_insights": ["可提取核心信息", "可用于初步决策支持"],
-        "bullet_points": ["建议人工复核关键结论"],
-        "risk_issues": "未发现高等级风险。",
-        "application_advice": "建议结合业务场景继续使用。",
-        "result_interpretation": "适合用于初筛。",
-        "logic_basis": "基于文本语义与关键句提取。",
-        "risk_hint": "高影响决策前建议二次复核。",
-        "risk_level": "低风险",
-        "highlight_keywords": ["摘要", "要点", "建议"],
-    }
-
-
 def analyze_file_with_ai(report_text: str, company_name: str = "", project_name: str = "") -> FileAIResult:
     if not report_text.strip():
         raise ValueError("文本为空，无法分析")
@@ -280,13 +237,10 @@ def analyze_file_with_ai(report_text: str, company_name: str = "", project_name:
 
     try:
         payload = _extract_json(raw)
-    except Exception:
-        payload = {}
+    except Exception as exc:
+        raise RuntimeError("AI返回格式异常，请重试。") from exc
 
     if mode == "mining":
-        if not payload:
-            payload = _mining_payload_fallback()
-
         advice_raw = str(payload.get("investment_advice", "谨慎"))
         if "继续" in advice_raw or "建议投资" in advice_raw:
             advice = "建议继续"
@@ -321,9 +275,6 @@ def analyze_file_with_ai(report_text: str, company_name: str = "", project_name:
             highlight_keywords=_to_list(payload.get("highlight_keywords")),
             raw_response=raw,
         )
-
-    if not payload:
-        payload = _general_payload_fallback()
 
     return FileAIResult(
         mode="general",
