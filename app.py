@@ -136,97 +136,98 @@ with module1:
         if uploaded_file is None:
             st.warning("请先上传文件。")
         else:
-            suffix = Path(uploaded_file.name).suffix.lower()
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-                tmp.write(uploaded_file.getbuffer())
-                path = tmp.name
+            with st.spinner("🚀 AI 正在逐页深度阅读并解析地质/贸易长卷，请耐心等待（大型文件可能需要 1-2 分钟）..."):
+                suffix = Path(uploaded_file.name).suffix.lower()
+                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                    tmp.write(uploaded_file.getbuffer())
+                    path = tmp.name
 
-            try:
-                text = extract_text(path)
-                result = analyze_file_with_ai(text, company_name=company_name, project_name=project_name)
+                try:
+                    text = extract_text(path)
+                    result = analyze_file_with_ai(text, company_name=company_name, project_name=project_name)
 
-                st.success("AI分析完成")
-                st.info(f"自动判定分析模式：{'矿业模式' if result.mode == 'mining' else '通用模式'}")
-                render_risk_badge(result.risk_level)
-                st.markdown("<br>", unsafe_allow_html=True)
-                highlight_keywords(result.highlight_keywords)
+                    st.success("AI分析完成")
+                    st.info(f"自动判定分析模式：{'矿业模式' if result.mode == 'mining' else '通用模式'}")
+                    render_risk_badge(result.risk_level)
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    highlight_keywords(result.highlight_keywords)
 
-                st.markdown("#### AI总结")
-                render_card("摘要", result.summary)
-                render_card("结果说明", result.result_interpretation)
-                render_card("逻辑依据", result.logic_basis)
+                    st.markdown("#### AI总结")
+                    render_card("摘要", result.summary)
+                    render_card("结果说明", result.result_interpretation)
+                    render_card("逻辑依据", result.logic_basis)
 
-                st.markdown("#### 关键指标")
-                if result.mode == "mining":
-                    render_card("矿种判断", result.mineral_type)
-                    render_card("品位信息（CaF2/SiO2）", result.grade_info)
-                    render_card("成矿类型", result.deposit_type)
-                    render_card("矿体规模", result.orebody_scale)
-                    render_card("厚度与延伸", result.thickness_extension)
-                    render_card("可采性评估", result.mineability)
-                    render_card("地质信息识别（综合）", result.geological_info)
-                    render_card("矿体信息分析（综合）", result.orebody_analysis)
-                    render_card("数据完整性", result.data_integrity)
-                else:
-                    render_card("关键信息提取", "<br>".join([f"• {i}" for i in result.key_insights]) or "无")
-                    render_card("结构化要点", "<br>".join([f"• {i}" for i in result.bullet_points]) or "无")
+                    st.markdown("#### 关键指标")
+                    if result.mode == "mining":
+                        render_card("矿种判断", result.mineral_type)
+                        render_card("品位信息（CaF2/SiO2）", result.grade_info)
+                        render_card("成矿类型", result.deposit_type)
+                        render_card("矿体规模", result.orebody_scale)
+                        render_card("厚度与延伸", result.thickness_extension)
+                        render_card("可采性评估", result.mineability)
+                        render_card("地质信息识别（综合）", result.geological_info)
+                        render_card("矿体信息分析（综合）", result.orebody_analysis)
+                        render_card("数据完整性", result.data_integrity)
+                    else:
+                        render_card("关键信息提取", "<br>".join([f"• {i}" for i in result.key_insights]) or "无")
+                        render_card("结构化要点", "<br>".join([f"• {i}" for i in result.bullet_points]) or "无")
 
-                st.markdown("#### 风险提示")
-                if result.mode == "mining":
-                    render_card("风险识别（地质/开采/合规）", result.risk_identification)
-                else:
-                    render_card("风险/问题识别", result.risk_issues)
-                render_card("执行风险提示", result.risk_hint)
+                    st.markdown("#### 风险提示")
+                    if result.mode == "mining":
+                        render_card("风险识别（地质/开采/合规）", result.risk_identification)
+                    else:
+                        render_card("风险/问题识别", result.risk_issues)
+                    render_card("执行风险提示", result.risk_hint)
 
-                st.markdown("#### 投资建议")
-                if result.mode == "mining":
-                    render_card("投资建议（建议继续/谨慎/放弃）", result.investment_advice)
-                else:
-                    render_card("应用建议", result.application_advice)
+                    st.markdown("#### 投资建议")
+                    if result.mode == "mining":
+                        render_card("投资建议（建议继续/谨慎/放弃）", result.investment_advice)
+                    else:
+                        render_card("应用建议", result.application_advice)
 
-                if result.mode == "mining":
-                    st.markdown("#### 风险雷达图")
-                    draw_radar(result.radar_scores)
+                    if result.mode == "mining":
+                        st.markdown("#### 风险雷达图")
+                        draw_radar(result.radar_scores)
 
-                duration = round(time.time() - start, 2)
+                    duration = round(time.time() - start, 2)
 
-                log_mining_history(
-                    MINING_HISTORY_PATH,
-                    {
-                        "case_id": case_id_mining,
-                        "project_name": project_name,
-                        "company_name": company_name,
-                        "mode": "矿业" if result.mode == "mining" else "通用",
-                        "risk_level": result.risk_level,
-                        "advice": result.investment_advice if result.mode == "mining" else result.application_advice,
-                        "summary": result.summary,
-                    },
-                )
+                    log_mining_history(
+                        MINING_HISTORY_PATH,
+                        {
+                            "case_id": case_id_mining,
+                            "project_name": project_name,
+                            "company_name": company_name,
+                            "mode": "矿业" if result.mode == "mining" else "通用",
+                            "risk_level": result.risk_level,
+                            "advice": result.investment_advice if result.mode == "mining" else result.application_advice,
+                            "summary": result.summary,
+                        },
+                    )
 
-                log_metric(
-                    METRICS_PATH,
-                    {
-                        "module": "geology" if result.mode == "mining" else "general_file",
-                        "case_id": case_id_mining,
-                        "duration_seconds": duration,
-                        "is_success": True,
-                        "accuracy": 97 if result.mode == "mining" else 95,
-                        "manual_minutes": 120 if result.mode == "mining" else 60,
-                        "app_minutes": max(duration / 60, 1),
-                    },
-                )
+                    log_metric(
+                        METRICS_PATH,
+                        {
+                            "module": "geology" if result.mode == "mining" else "general_file",
+                            "case_id": case_id_mining,
+                            "duration_seconds": duration,
+                            "is_success": True,
+                            "accuracy": 97 if result.mode == "mining" else 95,
+                            "manual_minutes": 120 if result.mode == "mining" else 60,
+                            "app_minutes": max(duration / 60, 1),
+                        },
+                    )
 
-            except Exception as exc:
-                st.error(f"处理失败：{exc}")
-                log_metric(
-                    METRICS_PATH,
-                    {
-                        "module": "general_file",
-                        "case_id": case_id_mining,
-                        "duration_seconds": round(time.time() - start, 2),
-                        "is_success": False,
-                    },
-                )
+                except Exception as exc:
+                    st.error(f"处理失败：{exc}")
+                    log_metric(
+                        METRICS_PATH,
+                        {
+                            "module": "general_file",
+                            "case_id": case_id_mining,
+                            "duration_seconds": round(time.time() - start, 2),
+                            "is_success": False,
+                        },
+                    )
 
     st.markdown("---")
     st.markdown("#### 矿山记录查询与导出")

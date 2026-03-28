@@ -132,9 +132,18 @@ def _is_mining_related(report_text: str) -> bool:
 
 def _build_prompt(mode: str, company_name: str, project_name: str, report_text: str) -> str:
     clipped = report_text[:12000]
+    hard_rules = """
+【强制执行指令】
+1) 绝对忠于原文：必须仅基于文档内容提取和扩写，严禁捏造；如文档缺失某项信息，必须明确写“文件中未提及”。
+2) 拒绝空泛总结：必须像资深矿业工程师和贸易风控专家，逐项深挖地质构造特征、成矿背景、核心金属品位具体数值、储量表格要点、选冶工艺难点、投资与贸易风险。
+3) 结构化长文输出：必须在JSON各文本字段内使用Markdown标题/加粗/列表，信息尽量详尽，整体内容深度尽量接近4000字级别。
+""".strip()
+
     if mode == "mining":
         return f"""
 你是矿业投资与地质尽调专家。请输出严格JSON，不要输出JSON外文本。
+
+{hard_rules}
 
 公司名称：{company_name or '未提供'}
 项目名称：{project_name or '未提供'}
@@ -171,6 +180,8 @@ def _build_prompt(mode: str, company_name: str, project_name: str, report_text: 
 
     return f"""
 你是企业文档分析顾问。请输出严格JSON，不要输出JSON外文本。
+
+{hard_rules}
 
 公司名称：{company_name or '未提供'}
 项目名称：{project_name or '未提供'}

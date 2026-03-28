@@ -37,7 +37,7 @@ def is_ai_configured() -> bool:
     return bool(api_key)
 
 
-def call_claude(prompt: str, model: str = "claude-sonnet-4-6", temperature: float = 0.2, max_tokens: int = 1400) -> str:
+def call_claude(prompt: str, model: str = "claude-sonnet-4-6", temperature: float = 0.2, max_tokens: int = 4096) -> str:
     api_key, base_url = get_claude_config()
     if not api_key:
         raise RuntimeError("未检测到 ANTHROPIC_API_KEY 配置，请在 Streamlit secrets 或环境变量中设置。")
