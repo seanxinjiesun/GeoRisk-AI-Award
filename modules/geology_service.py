@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List
 
+import pdfplumber
 import pytesseract
 from docx import Document
 from PIL import Image
@@ -68,21 +69,18 @@ def _read_docx(path: Path) -> str:
     return "\n".join(p.text for p in doc.paragraphs)
 
 
-def _read_pdf_with_pypdf2(path: Path) -> str:
+def _read_pdf_with_pdfplumber(path: Path) -> str:
+    parts: List[str] = []
     try:
-        import PyPDF2
-        with open(str(path), 'rb') as f:
-            pdf_reader = PyPDF2.PdfReader(f)
-            full_text = ""
+        with pdfplumber.open(str(path)) as pdf:
             # 强制遍历每一页，绝不允许中途 break 或截断
-            for page_num in range(len(pdf_reader.pages)):
-                page = pdf_reader.pages[page_num]
-                page_text = page.extract_text()
-                if page_text:
-                    full_text += page_text + "\n"
-            return full_text
+            for page in pdf.pages:
+                text = page.extract_text()
+                if text:
+                    parts.append(text)
     except Exception as e:
         return f"PDF读取失败: {str(e)}"
+    return "\n".join(parts)
 
 
 def _ocr_pdf_with_pytesseract(path: Path) -> str:
@@ -123,7 +121,7 @@ def extract_text(file_path: str) -> str:
     if suffix == ".docx":
         return _read_docx(path)
     if suffix == ".pdf":
-        text = _read_pdf_with_pypdf2(path)
+        text = _read_pdf_with_pdfplumber(path)
         if len(text.strip()) < 120:
             text = f"{text}\n{_ocr_pdf_with_pytesseract(path)}".strip()
         return text
