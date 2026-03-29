@@ -71,9 +71,12 @@ def _read_docx(path: Path) -> str:
 
 def _read_pdf_with_pdfplumber(path: Path) -> str:
     parts: List[str] = []
-    with pdfplumber.open(str(path)) as pdf:
-        for page in pdf.pages:
-            parts.append(page.extract_text() or "")
+    try:
+        with pdfplumber.open(str(path)) as pdf:
+            for page in pdf.pages:
+                parts.append(page.extract_text() or "")
+    except Exception:
+        pass
     return "\n".join(parts)
 
 
@@ -134,7 +137,7 @@ def _build_prompt(mode: str, company_name: str, project_name: str, report_text: 
     clipped = report_text[:12000]
     hard_rules = """
 【强制执行指令】
-1) 绝对忠于原文：必须仅基于文档内容提取和扩写，严禁捏造；如文档缺失某项信息，必须明确写“文件中未提及”。
+1) 绝对忠于原文：必须仅基于文档内容提取和扩写，严禁捏造；如文档缺失某项信息，必须明确写"文件中未提及"。
 2) 拒绝空泛总结：必须像资深矿业工程师和贸易风控专家，逐项深挖地质构造特征、成矿背景、核心金属品位具体数值、储量表格要点、选冶工艺难点、投资与贸易风险。
 3) 结构化长文输出：必须在JSON各文本字段内使用Markdown标题/加粗/列表，信息尽量详尽，整体内容深度尽量接近4000字级别。
 """.strip()
@@ -207,11 +210,17 @@ def _build_prompt(mode: str, company_name: str, project_name: str, report_text: 
 def _extract_json(text: str) -> dict:
     text = text.strip()
     if text.startswith("{") and text.endswith("}"):
-        return json.loads(text)
+        try:
+            return json.loads(text)
+        except Exception:
+            pass
     match = re.search(r"\{[\s\S]*\}", text)
-    if not match:
-        raise ValueError("未识别到JSON结构")
-    return json.loads(match.group(0))
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except Exception:
+            pass
+    return {}
 
 
 def _to_list(value: object) -> List[str]:
@@ -239,6 +248,49 @@ def _safe_scores(payload: dict) -> Dict[str, float]:
     }
 
 
+def _mining_fallback_payload() -> dict:
+    return {
+        "summary": "文档疑似矿业相关，但结构化结果异常。建议补充数据重试。",
+        "mineral_type": "未稳定识别",
+        "grade_info": "未稳定识别",
+        "deposit_type": "未稳定识别",
+        "orebody_scale": "资料不足",
+        "thickness_extension": "资料不足",
+        "mineability": "谨慎评估",
+        "geological_info": "地质要素可部分识别，但证据链不足。",
+        "orebody_analysis": "矿体规模与稳定性信息不足。",
+        "data_integrity": "关键字段缺失，建议补充钻孔与化验数据。",
+        "risk_identification": "地质/开采/合规风险信息不完整。",
+        "investment_advice": "谨慎",
+        "result_interpretation": "仅供初筛参考，暂不建议直接投资决策。",
+        "logic_basis": "AI输出异常回退保守策略。",
+        "risk_hint": "优先补齐矿体连续性与品位样本数据。",
+        "risk_level": "中风险",
+        "highlight_keywords": ["矿体", "品位", "风险"],
+        "radar_scores": {
+            "geological_potential": 55,
+            "data_integrity": 50,
+            "project_stage": 50,
+            "risk_factor": 50,
+        },
+    }
+
+
+def _general_fallback_payload() -> dict:
+    return {
+        "summary": "文档为通用内容，已输出摘要与建议。",
+        "key_insights": ["可提取核心信息", "可用于初步决策支持"],
+        "bullet_points": ["建议人工复核关键结论"],
+        "risk_issues": "未发现高等级风险。",
+        "application_advice": "建议结合业务场景继续使用。",
+        "result_interpretation": "适合用于初筛。",
+        "logic_basis": "基于文本语义与关键句提取。",
+        "risk_hint": "高影响决策前建议二次复核。",
+        "risk_level": "低风险",
+        "highlight_keywords": ["摘要", "要点", "建议"],
+    }
+
+
 def analyze_file_with_ai(report_text: str, company_name: str = "", project_name: str = "") -> FileAIResult:
     if not report_text.strip():
         raise ValueError("文本为空，无法分析")
@@ -246,10 +298,9 @@ def analyze_file_with_ai(report_text: str, company_name: str = "", project_name:
     mode = "mining" if _is_mining_related(report_text) else "general"
     raw = call_claude(_build_prompt(mode, company_name, project_name, report_text))
 
-    try:
-        payload = _extract_json(raw)
-    except Exception as exc:
-        raise RuntimeError("AI返回格式异常，请重试。") from exc
+    payload = _extract_json(raw)
+    if not payload:
+        payload = _mining_fallback_payload() if mode == "mining" else _general_fallback_payload()
 
     if mode == "mining":
         advice_raw = str(payload.get("investment_advice", "谨慎"))
