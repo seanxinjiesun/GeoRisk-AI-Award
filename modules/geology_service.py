@@ -70,6 +70,7 @@ def _read_docx(path: Path) -> str:
 
 
 def _read_pdf_with_pdfplumber(path: Path) -> str:
+    """使用pdfplumber稳定解析PDF，强制遍历每一页，毫无遗漏"""
     parts: List[str] = []
     try:
         with pdfplumber.open(str(path)) as pdf:
@@ -137,36 +138,40 @@ def _is_mining_related(report_text: str) -> bool:
 
 
 def _build_prompt(mode: str, company_name: str, project_name: str, report_text: str) -> str:
-    hard_rules = """
-【强制执行指令】
-1) 绝对忠于原文：必须仅基于文档内容提取和扩写，严禁捏造；如文档缺失某项信息，必须明确写"文件中未提及"。
-2) 拒绝空泛总结：必须像资深矿业工程师和贸易风控专家，逐项深挖地质构造特征、成矿背景、核心金属品位具体数值、储量表格要点、选冶工艺难点、投资与贸易风险。
-3) 结构化长文输出：必须在JSON各文本字段内使用Markdown标题/加粗/列表，信息尽量详尽，整体内容深度尽量接近4000字级别。
-4) 必须基于我提供的【完整报告原文】进行深度挖掘！精准提取地层构造、详细的铜/金品位数值、氧化率和开采坑点。绝对不允许只读目录，绝对不允许生成泛泛的摘要，把 4096 个输出 token 全部用在干货上。
+    # 最强业务提示词（总工级）
+    master_prompt = """
+你是一个资深的矿业地质总工和国际贸易风控专家。请对用户上传的矿产报告全文进行极限深度的扫描与解析。
+
+核心纪律：
+
+绝对忠于原文：必须基于文件本身的内容进行提取和深度扩写，绝不允许凭空捏造。如果文件中没有任何关于品位、储量的具体数字，直接明确预警"文件中未提及具体数据"。
+
+拒绝空泛总结：不要给我一两百字的摘要！你必须逐一深挖文件中的：地质构造特征、成矿背景、核心金属品位数据（具体数值）、储量预估表格解析、选冶工艺难点、以及潜在的投资与贸易风险。
+
+结构化长文输出：使用清晰的 Markdown 标题、加粗和列表，把所有提取到的细节详尽地铺陈出来，字数越多越好，用满你的最大输出限制。
+
+以下是提取出的完整报告原文：
+{full_text}
 """.strip()
 
     if mode == "mining":
         return f"""
-你是矿业投资与地质尽调专家。请输出严格JSON，不要输出JSON外文本。
-
-{hard_rules}
+{master_prompt}
 
 公司名称：{company_name or '未提供'}
 项目名称：{project_name or '未提供'}
-文档内容：
-{report_text}
 
-输出JSON：
+请输出严格JSON格式（不要输出JSON外的其他文本）：
 {{
-  "summary": "整体结论摘要",
+  "summary": "整体结论摘要（详尽）",
   "mineral_type": "矿种判断",
-  "grade_info": "品位信息（如CaF2、SiO2）",
+  "grade_info": "品位信息（如CaF2、SiO2的具体数值）",
   "deposit_type": "成矿类型",
   "orebody_scale": "矿体规模",
   "thickness_extension": "厚度与延伸",
   "mineability": "可采性评估",
-  "geological_info": "地质信息识别综合结论",
-  "orebody_analysis": "矿体信息分析综合结论",
+  "geological_info": "地质信息识别综合结论（深度挖掘）",
+  "orebody_analysis": "矿体信息分析综合结论（深度挖掘）",
   "data_integrity": "数据完整性（是否具备决策所需信息、是否缺关键数据）",
   "risk_identification": "风险识别（地质风险/开采风险/合规风险）",
   "investment_advice": "建议继续/谨慎/放弃（三选一）",
@@ -182,21 +187,17 @@ def _build_prompt(mode: str, company_name: str, project_name: str, report_text: 
   }},
   "highlight_keywords": ["矿种", "CaF2", "SiO2"]
 }}
-""".strip()
+""".replace("{full_text}", report_text)
 
     return f"""
-你是企业文档分析顾问。请输出严格JSON，不要输出JSON外文本。
-
-{hard_rules}
+{master_prompt}
 
 公司名称：{company_name or '未提供'}
 项目名称：{project_name or '未提供'}
-文档内容：
-{report_text}
 
-输出JSON：
+请输出严格JSON格式（不要输出JSON外的其他文本）：
 {{
-  "summary": "文件摘要",
+  "summary": "文件摘要（详尽）",
   "key_insights": ["关键信息1", "关键信息2", "关键信息3"],
   "bullet_points": ["结构化要点1", "结构化要点2", "结构化要点3"],
   "risk_issues": "风险/问题识别（若无则写未发现显著风险）",
@@ -207,7 +208,7 @@ def _build_prompt(mode: str, company_name: str, project_name: str, report_text: 
   "risk_level": "低风险/中风险/高风险",
   "highlight_keywords": ["关键词1", "关键词2", "关键词3"]
 }}
-""".strip()
+""".replace("{full_text}", report_text)
 
 
 def _extract_json(text: str) -> dict:

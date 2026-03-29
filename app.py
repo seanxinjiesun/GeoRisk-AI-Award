@@ -192,45 +192,45 @@ with module1:
                     st.markdown("#### 风险雷达图")
                     draw_radar(result.radar_scores)
 
-                    duration = round(time.time() - start, 2)
+                duration = round(time.time() - start, 2)
 
-                    log_mining_history(
-                        MINING_HISTORY_PATH,
-                        {
-                            "case_id": case_id_mining,
-                            "project_name": project_name,
-                            "company_name": company_name,
-                            "mode": "矿业" if result.mode == "mining" else "通用",
-                            "risk_level": result.risk_level,
-                            "advice": result.investment_advice if result.mode == "mining" else result.application_advice,
-                            "summary": result.summary,
-                        },
-                    )
+                log_mining_history(
+                    MINING_HISTORY_PATH,
+                    {
+                        "case_id": case_id_mining,
+                        "project_name": project_name,
+                        "company_name": company_name,
+                        "mode": "矿业" if result.mode == "mining" else "通用",
+                        "risk_level": result.risk_level,
+                        "advice": result.investment_advice if result.mode == "mining" else result.application_advice,
+                        "summary": result.summary,
+                    },
+                )
 
-                    log_metric(
-                        METRICS_PATH,
-                        {
-                            "module": "geology" if result.mode == "mining" else "general_file",
-                            "case_id": case_id_mining,
-                            "duration_seconds": duration,
-                            "is_success": True,
-                            "accuracy": 97 if result.mode == "mining" else 95,
-                            "manual_minutes": 120 if result.mode == "mining" else 60,
-                            "app_minutes": max(duration / 60, 1),
-                        },
-                    )
+                log_metric(
+                    METRICS_PATH,
+                    {
+                        "module": "geology" if result.mode == "mining" else "general_file",
+                        "case_id": case_id_mining,
+                        "duration_seconds": duration,
+                        "is_success": True,
+                        "accuracy": 97 if result.mode == "mining" else 95,
+                        "manual_minutes": 120 if result.mode == "mining" else 60,
+                        "app_minutes": max(duration / 60, 1),
+                    },
+                )
 
-                except Exception as exc:
-                    st.error(f"处理失败：{exc}")
-                    log_metric(
-                        METRICS_PATH,
-                        {
-                            "module": "general_file",
-                            "case_id": case_id_mining,
-                            "duration_seconds": round(time.time() - start, 2),
-                            "is_success": False,
-                        },
-                    )
+            except Exception as exc:
+                st.error(f"处理失败：{exc}")
+                log_metric(
+                    METRICS_PATH,
+                    {
+                        "module": "general_file",
+                        "case_id": case_id_mining,
+                        "duration_seconds": round(time.time() - start, 2),
+                        "is_success": False,
+                    },
+                )
 
     st.markdown("---")
     st.markdown("#### 矿山记录查询与导出")
