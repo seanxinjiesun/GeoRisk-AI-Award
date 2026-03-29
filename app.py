@@ -144,6 +144,7 @@ with module1:
 
                 try:
                     text = extract_text(path)
+                    st.info(f"🔍 后台诊断：成功从 PDF 中提取了 {len(text)} 个字符的数据。")
                     result = analyze_file_with_ai(text, company_name=company_name, project_name=project_name)
 
                     st.success("AI分析完成")
